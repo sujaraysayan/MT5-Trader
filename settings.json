@@ -1,0 +1,6 @@
+{
+    "lot_min": 0.01,
+    "lot_max": 0.1,
+    "tp_percent": 1.5,
+    "sl_percent": 1.0
+}

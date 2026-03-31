@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MT5 Gold Trader - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e17;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+            padding: 20px 30px;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        .header h1 {
+            color: #f0b90b;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header .subtitle {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px 30px;
+        }
+        
+        .stat-card {
+            background: #1a1f2e;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #2d3748;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: #f0b90b;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .stat-value.positive {
+            color: #00c853;
+        }
+        
+        .stat-value.negative {
+            color: #ff5252;
+        }
+        
+        .stat-change {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .stat-change.up {
+            color: #00c853;
+        }
+        
+        .stat-change.down {
+            color: #ff5252;
+        }
+        
+        /* Main Content */
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 0 30px 30px;
+        }
+        
+        /* Panel */
+        .panel {
+            background: #1a1f2e;
+            border-radius: 12px;
+            border: 1px solid #2d3748;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            background: #0d1117;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2d3748;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .panel-body {
+            padding: 15px 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 10px;
+            color: #718096;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #2d3748;
+            font-size: 13px;
+        }
+        
+        tr:hover {
+            background: rgba(240, 185, 11, 0.05);
+        }
+        
+        /* Signal Badge */
+        .signal-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .signal-badge.buy {
+            background: rgba(0, 200, 83, 0.2);
+            color: #00c853;
+        }
+        
+        .signal-badge.sell {
+            background: rgba(255, 82, 82, 0.2);
+            color: #ff5252;
+        }
+        
+        .signal-badge.hold {
+            background: rgba(113, 128, 150, 0.2);
+            color: #718096;
+        }
+        
+        /* P&L Colors */
+        .pnl {
+            font-weight: 600;
+        }
+        
+        .pnl.positive {
+            color: #00c853;
+        }
+        
+        .pnl.negative {
+            color: #ff5252;
+        }
+        
+        /* Close Button */
+        .btn-close {
+            background: #ff5252;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        
+        .btn-close:hover {
+            background: #ff1744;
+        }
+        
+        .btn-close:disabled {
+            background: #424242;
+            cursor: not-allowed;
+        }
+        
+        /* Status Indicator */
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-dot.online {
+            background: #00c853;
+            box-shadow: 0 0 8px #00c853;
+        }
+        
+        .status-dot.offline {
+            background: #ff5252;
+        }
+        
+        /* Chart Placeholder */
+        .chart-container {
+            height: 250px;
+            background: linear-gradient(180deg, #0d1117 0%, #1a1f2e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #718096;
+            font-size: 12px;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #2d3748;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a5568;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                padding: 15px;
+            }
+            
+            .main-content {
+                padding: 0 15px 15px;
+            }
+        }
+        
+        /* Auto-refresh indicator */
+        .refresh-indicator {
+            font-size: 11px;
+            color: #718096;
+        }
+        
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #2d3748;
+            border-top-color: #f0b90b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Price Display */
+        .price-display {
+            font-size: 36px;
+            font-weight: bold;
+            color: #f0b90b;
+            margin: 20px 30px;
+            text-align: center;
+        }
+        
+        .price-display .currency {
+            font-size: 18px;
+            color: #718096;
+        }
+        
+        .price-display .change {
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        
+        .price-display .change.up {
+            color: #00c853;
+        }
+        
+        .price-display .change.down {
+            color: #ff5252;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🥇 MT5 Gold Trader</h1>
+        <div class="subtitle">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Connecting...</span>
+            <span class="refresh-indicator">| Last update: <span id="lastUpdate">--:--:--</span></span>
+        </div>
+    </div>
+    
+    <!-- Price Display -->
+    <div class="price-display">
+        <span class="currency">XAUUSD</span>
+        <span id="currentPrice">--</span>
+        <span class="change" id="priceChange">--</span>
+    </div>
+    
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Portfolio</div>
+            <div class="stat-value" id="equity">$0.00</div>
+            <div class="stat-change" id="equityChange">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Return</div>
+            <div class="stat-value" id="totalReturn">0%</div>
+            <div class="stat-change" id="returnChange">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Win Rate</div>
+            <div class="stat-value" id="winRate">0%</div>
+            <div class="stat-change" id="winRateTrades">-- trades</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total P&L</div>
+            <div class="stat-value" id="totalPnL">$0.00</div>
+            <div class="stat-change" id="pnLChange">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Open Positions</div>
+            <div class="stat-value" id="openPositions">0</div>
+            <div class="stat-change" id="positionsChange">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Signals Today</div>
+            <div class="stat-value" id="signalsToday">0</div>
+            <div class="stat-change" id="signalsChange">--</div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Left Column -->
+        <div>
+            <!-- Signals Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">📊 Recent Signals</span>
+                    <span class="refresh-indicator">Auto-refresh: 15s</span>
+                </div>
+                <div class="panel-body">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Strategy</th>
+                                <th>Signal</th>
+                                <th>Price</th>
+                                <th>Confidence</th>
+                                <th>SL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="signalsTable">
+                            <tr><td colspan="6" style="text-align:center;color:#718096">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Trade History Panel -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <span class="panel-title">📜 Trade History</span>
+                </div>
+                <div class="panel-body">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Symbol</th>
+                                <th>Direction</th>
+                                <th>Entry</th>
+                                <th>Exit</th>
+                                <th>P&L</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradesTable">
+                            <tr><td colspan="6" style="text-align:center;color:#718096">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div>
+            <!-- Open Positions Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">📌 Open Positions</span>
+                    <button class="btn-settings" onclick="showSettingsModal()">⚙️ Settings</button>
+                </div>
+                <div class="panel-body">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Direction</th>
+                                <th>Entry</th>
+                                <th>Current</th>
+                                <th>P&L</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positionsTable">
+                            <tr><td colspan="6" style="text-align:center;color:#718096">No open positions</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Performance Panel -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <span class="panel-title">📈 Performance</span>
+                </div>
+                <div class="panel-body">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <div class="stat-label">Avg Win</div>
+                            <div class="stat-value positive" id="avgWin" style="font-size: 20px;">$0</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Avg Loss</div>
+                            <div class="stat-value negative" id="avgLoss" style="font-size: 20px;">$0</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Winning Trades</div>
+                            <div class="stat-value positive" id="winningTrades" style="font-size: 20px;">0</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Losing Trades</div>
+                            <div class="stat-value negative" id="losingTrades" style="font-size: 20px;">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Equity Chart Placeholder -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <span class="panel-title">📉 Equity Curve</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Decision History Panel -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <span class="panel-title">🧠 Decision History</span>
+                </div>
+                <div class="panel-body" style="max-height: 300px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Action</th>
+                                <th>Reason</th>
+                                <th>Price</th>
+                                <th>Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="decisionsTable">
+                            <tr><td colspan="5" style="text-align:center;color:#718096">No decisions yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+        MT5 Gold Trader Dashboard | Auto-refresh every 15 seconds
+    </div>
+    
+    <script>
+        // API Base URL
+        const API_BASE = '';
+        
+        // Update interval (ms)
+        const UPDATE_INTERVAL = 15000;
+        
+        // Format number with commas
+        function formatNumber(num, decimals = 2) {
+            if (num === null || num === undefined) return '--';
+            return parseFloat(num).toLocaleString('en-US', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+        
+        // Format percentage
+        function formatPercent(num) {
+            if (num === null || num === undefined) return '--';
+            return parseFloat(num).toFixed(2) + '%';
+        }
+        
+        // Format datetime
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '--';
+            const d = new Date(dateStr);
+            return d.toLocaleString('th-TH', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Get signal badge HTML
+        function getSignalBadge(type) {
+            type = type.toLowerCase();
+            return `<span class="signal-badge ${type}">${type}</span>`;
+        }
+        
+        // Update status
+        async function updateStatus() {
+            try {
+                const res = await fetch(API_BASE + '/api/status');
+                const data = await res.json();
+                document.getElementById('statusDot').className = 'status-dot online';
+                document.getElementById('statusText').textContent = 'System Online';
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            } catch (e) {
+                document.getElementById('statusDot').className = 'status-dot offline';
+                document.getElementById('statusText').textContent = 'System Offline';
+            }
+        }
+        
+        // Update performance
+        async function updatePerformance() {
+            try {
+                const res = await fetch(API_BASE + '/api/performance');
+                const data = await res.json();
+                
+                // Equity
+                const equityEl = document.getElementById('equity');
+                equityEl.textContent = '$' + formatNumber(data.current_equity);
+                
+                // Return
+                const returnEl = document.getElementById('totalReturn');
+                const returnVal = data.total_return || 0;
+                returnEl.textContent = formatPercent(returnVal);
+                returnEl.className = 'stat-value ' + (returnVal >= 0 ? 'positive' : 'negative');
+                
+                // Win Rate
+                const winRateEl = document.getElementById('winRate');
+                winRateEl.textContent = formatPercent(data.win_rate);
+                
+                document.getElementById('winRateTrades').textContent = 
+                    data.total_trades + ' trades';
+                
+                // Total P&L
+                const pnlEl = document.getElementById('totalPnL');
+                const pnlVal = data.total_pnl || 0;
+                pnlEl.textContent = '$' + formatNumber(pnlVal);
+                pnlEl.className = 'stat-value ' + (pnlVal >= 0 ? 'positive' : 'negative');
+                
+                // Avg Win/Loss
+                document.getElementById('avgWin').textContent = '$' + formatNumber(data.avg_win);
+                document.getElementById('avgLoss').textContent = '$' + formatNumber(data.avg_loss);
+                
+                // Trade counts
+                document.getElementById('winningTrades').textContent = data.winning_trades;
+                document.getElementById('losingTrades').textContent = data.losing_trades;
+                
+                // Open positions
+                document.getElementById('openPositions').textContent = '0';
+                
+            } catch (e) {
+                console.error('Performance update error:', e);
+            }
+        }
+        
+        // Update signals
+        async function updateSignals() {
+            try {
+                const res = await fetch(API_BASE + '/api/signals?limit=10');
+                const data = await res.json();
+                
+                const tbody = document.getElementById('signalsTable');
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#718096">No signals yet</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(signal => `
+                    <tr>
+                        <td>${formatDateTime(signal.timestamp)}</td>
+                        <td>${signal.strategy}</td>
+                        <td>${getSignalBadge(signal.signal_type)}</td>
+                        <td>${formatNumber(signal.price)}</td>
+                        <td>${formatPercent(signal.confidence * 100)}</td>
+                        <td>${signal.sl ? formatNumber(signal.sl) : '--'}</td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('signalsToday').textContent = data.data.length;
+                
+            } catch (e) {
+                console.error('Signals update error:', e);
+            }
+        }
+        
+        // Update trades
+        async function updateTrades() {
+            try {
+                const res = await fetch(API_BASE + '/api/trades?limit=10');
+                const data = await res.json();
+                
+                const tbody = document.getElementById('tradesTable');
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#718096">No trade history</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(trade => `
+                    <tr>
+                        <td>${formatDateTime(trade.timestamp)}</td>
+                        <td>${trade.symbol}</td>
+                        <td>${getSignalBadge(trade.direction)}</td>
+                        <td>${formatNumber(trade.entry_price)}</td>
+                        <td>${trade.exit_price ? formatNumber(trade.exit_price) : '--'}</td>
+                        <td class="pnl ${trade.profit >= 0 ? 'positive' : 'negative'}">
+                            ${trade.profit ? '$' + formatNumber(trade.profit) : '--'}
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (e) {
+                console.error('Trades update error:', e);
+            }
+        }
+        
+        // Update positions
+        async function updatePositions() {
+            try {
+                const res = await fetch(API_BASE + '/api/positions');
+                const data = await res.json();
+                
+                const tbody = document.getElementById('positionsTable');
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#718096">No open positions</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(pos => `
+                    <tr>
+                        <td>#${pos.ticket || pos.id}</td>
+                        <td>${getSignalBadge(pos.direction)}</td>
+                        <td>$${formatNumber(pos.price_open, 2)}</td>
+                        <td>$${formatNumber(pos.current_price, 2)}</td>
+                        <td class="pnl ${pos.profit >= 0 ? 'positive' : 'negative'}" style="font-size:14px;font-weight:bold;">
+                            $${formatNumber(pos.profit, 2)}
+                        </td>
+                        <td>
+                            <button class="btn-close" onclick="closePosition('${pos.ticket || pos.id}')">Close</button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('openPositions').textContent = data.data.length;
+                
+            } catch (e) {
+                console.error('Positions update error:', e);
+            }
+        }
+        
+        // Close position
+        async function closePosition(ticket) {
+            if (!confirm('Close this position?')) return;
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Closing...';
+            
+            try {
+                const res = await fetch(API_BASE + '/api/close-position', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ticket: ticket})
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert('Position closed! Profit: $' + formatNumber(result.profit));
+                    updateAll();
+                } else {
+                    alert('Error: ' + result.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Close';
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+                btn.disabled = false;
+                btn.textContent = 'Close';
+            }
+        }
+        
+        // Update decision history
+        async function updateDecisions() {
+            try {
+                const res = await fetch(API_BASE + '/api/decisions?limit=20');
+                const data = await res.json();
+                
+                const tbody = document.getElementById('decisionsTable');
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#718096">No decisions yet</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(decision => `
+                    <tr>
+                        <td>${formatDateTime(decision.timestamp)}</td>
+                        <td>${decision.action}</td>
+                        <td>${decision.reason || '--'}</td>
+                        <td>${decision.price ? formatNumber(decision.price) : '--'}</td>
+                        <td class="pnl ${decision.profit >= 0 ? 'positive' : 'negative'}">
+                            ${decision.profit ? '$' + formatNumber(decision.profit) : '--'}
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (e) {
+                console.error('Decisions update error:', e);
+            }
+        }
+        
+        // Update current price from MT5
+        async function updateCurrentPrice() {
+            try {
+                const res = await fetch(API_BASE + '/api/price');
+                const data = await res.json();
+                
+                const priceEl = document.getElementById('currentPrice');
+                const changeEl = document.getElementById('priceChange');
+                
+                if (data.bid && data.bid > 0) {
+                    priceEl.textContent = '$' + formatNumber(data.bid, 2);
+                    changeEl.textContent = '';
+                    changeEl.className = 'change';
+                    
+                    // Update equity display
+                    document.getElementById('equity').textContent = 
+                        formatNumber(data.equity);
+                }
+            } catch (e) {
+                console.error('Price update error:', e);
+            }
+        }
+        
+        // Main update function
+        async function updateAll() {
+            await updateStatus();
+            await updatePerformance();
+            await updateSignals();
+            await updateTrades();
+            await updatePositions();
+            await updateDecisions();
+            updateCurrentPrice();
+        }
+        
+        // Initialize
+        updateAll();
+        
+        // Auto-refresh
+        setInterval(updateAll, UPDATE_INTERVAL);
+        
+        // Equity Chart
+        let equityChart;
+        
+        async function updateEquityChart() {
+            try {
+                const res = await fetch(API_BASE + "/api/equity");
+                const data = await res.json();
+                
+                if (data.data && data.data.length > 0) {
+                    const ctx = document.getElementById("equityChart").getContext("2d");
+                    
+                    const labels = data.data.map(d => d.time);
+                    const values = data.data.map(d => d.equity);
+                    
+                    if (equityChart) {
+                        equityChart.destroy();
+                    }
+                    
+                    equityChart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: "Equity",
+                                data: values,
+                                borderColor: "#f0b90b",
+                                backgroundColor: "rgba(240, 185, 11, 0.1)",
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: true,
+                                    grid: {
+                                        color: "rgba(255,255,255,0.1)"
+                                    },
+                                    ticks: {
+                                        color: "#718096"
+                                    }
+                                },
+                                y: {
+                                    display: true,
+                                    grid: {
+                                        color: "rgba(255,255,255,0.1)"
+                                    },
+                                    ticks: {
+                                        color: "#718096",
+                                        callback: function(value) {
+                                            return "$" + value.toLocaleString();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Equity chart error:", e);
+            }
+        }
+        
+        // Initialize chart
+        updateEquityChart();
+        setInterval(updateEquityChart, 60000);
+        
+        // Decision Modal
+        let decisionModal = null;
+        let currentStrategies = null;
+        
+        function showDecisionModal(decision) {
+            // Parse strategies if string
+            let strategies = decision.strategies_analyzed;
+            if (typeof strategies === 'string') {
+                try {
+                    strategies = JSON.parse(strategies);
+                } catch (e) {
+                    strategies = [];
+                }
+            }
+            
+            currentStrategies = strategies;
+            
+            // Create modal if not exists
+            if (!decisionModal) {
+                decisionModal = document.createElement('div');
+                decisionModal.id = 'decisionModal';
+                decisionModal.className = 'modal';
+                decisionModal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <span class="modal-title">Strategy Breakdown</span>
+                            <span class="modal-close">&times;</span>
+                        </div>
+                        <div class="modal-body" id="modalBody">
+                            <table class="strategy-table">
+                                <thead>
+                                    <tr>
+                                        <th>Strategy</th>
+                                        <th>Signal</th>
+                                        <th>Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="strategyTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(decisionModal);
+                
+                // Close modal events
+                decisionModal.querySelector('.modal-close').onclick = closeModal;
+                decisionModal.onclick = function(e) {
+                    if (e.target === decisionModal) closeModal();
+                };
+            }
+            
+            // Update modal content
+            document.getElementById('modalBody').innerHTML = `
+                <div class="decision-info">
+                    <div><strong>Time:</strong> ${formatDateTime(decision.timestamp)}</div>
+                    <div><strong>Action:</strong> ${decision.action}</div>
+                    <div><strong>Price:</strong> ${decision.price ? '$' + formatNumber(decision.price) : '--'}</div>
+                    <div><strong>Reason:</strong> ${decision.reason || '--'}</div>
+                    ${decision.profit ? `<div><strong>Profit:</strong> <span class="pnl ${decision.profit >= 0 ? 'positive' : 'negative'}">$${formatNumber(decision.profit)}</span></div>` : ''}
+                </div>
+                <table class="strategy-table">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Signal</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="strategyTableBody">
+                        ${(strategies || []).map(s => `
+                            <tr>
+                                <td>${s.name || s.strategy || '--'}</td>
+                                <td><span class="signal-badge ${s.signal || 'hold'}">${s.signal || 'hold'}</span></td>
+                                <td>${s.confidence ? (s.confidence * 100).toFixed(0) + '%' : '--'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            // Show modal
+            decisionModal.style.display = 'flex';
+        }
+        
+        function closeModal() {
+            if (decisionModal) {
+                decisionModal.style.display = 'none';
+            }
+        }
+        
+        // Update decisions table to be clickable
+        async function updateDecisions() {
+            try {
+                const res = await fetch(API_BASE + '/api/decisions?limit=20');
+                const data = await res.json();
+                
+                const tbody = document.getElementById('decisionsTable');
+                
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#718096">No decisions yet</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.data.map(decision => `
+                    <tr class="clickable-row" onclick='showDecisionModal(${JSON.stringify(decision).replace(/'/g, "\\'")})'>
+                        <td>${formatDateTime(decision.timestamp)}</td>
+                        <td>${decision.action}</td>
+                        <td>${decision.reason || '--'}</td>
+                        <td>${decision.price ? formatNumber(decision.price) : '--'}</td>
+                        <td class="pnl ${decision.profit >= 0 ? 'positive' : 'negative'}">
+                            ${decision.profit ? '$' + formatNumber(decision.profit) : '--'}
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (e) {
+                console.error('Decisions update error:', e);
+            }
+        }
+    </script>
+    
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: #1a1f2e;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #f0b90b;
+        }
+        
+        .modal-close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+        }
+        
+        .modal-close:hover {
+            color: #fff;
+        }
+        
+        .decision-info {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #0d1117;
+            border-radius: 8px;
+        }
+        
+        .decision-info div {
+            margin: 5px 0;
+            color: #e0e0e0;
+        }
+        
+        .strategy-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .strategy-table th, .strategy-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        .strategy-table th {
+            color: #718096;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        
+        .clickable-row {
+            cursor: pointer;
+        }
+        
+        .clickable-row:hover {
+            background: rgba(240, 185, 11, 0.1);
+        }
+        
+        .btn-settings {
+            background: #2d3748;
+            color: #fff;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn-settings:hover {
+            background: #4a5568;
+        }
+        
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+        
+        .settings-label {
+            color: #e0e0e0;
+        }
+        
+        .settings-input {
+            width: 80px;
+            padding: 5px 8px;
+            background: #0d1117;
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            color: #f0b90b;
+            text-align: right;
+        }
+        
+        .btn-save {
+            background: #f0b90b;
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn-save:hover {
+            background: #d4a00d;
+        }
+    </style>
+    
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">⚙️ Trading Settings</span>
+                <span class="modal-close" onclick="closeSettingsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="settings-row">
+                    <span class="settings-label">Lot Min:</span>
+                    <input type="number" class="settings-input" id="lotMin" step="0.01" min="0.01" max="1" onchange="updateLotPreview()">
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Lot Max:</span>
+                    <input type="number" class="settings-input" id="lotMax" step="0.01" min="0.01" max="1" onchange="updateLotPreview()">
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">SL Percent (%):</span>
+                    <input type="number" class="settings-input" id="slPercent" step="0.1" min="0.1" max="10">
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">TP Percent (%):</span>
+                    <input type="number" class="settings-input" id="tpPercent" step="0.1" min="0.1" max="10">
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: #0d1117; border-radius: 8px;">
+                    <div style="color: #718096; font-size: 12px; margin-bottom: 5px;">Lot Preview (at current price <span id="currentPriceDisplay">--</span>):</div>
+                    <div style="color: #f0b90b; font-size: 13px;">
+                        Min: <span id="lotMinValue">0.01</span> lots = $<span id="lotMinPrice">--</span>
+                    </div>
+                    <div style="color: #f0b90b; font-size: 13px;">
+                        Max: <span id="lotMaxValue">0.1</span> lots = $<span id="lotMaxPrice">--</span>
+                    </div>
+                    <div style="color: #718096; font-size: 11px; margin-top: 5px;">
+                        Formula: lot = min + (max - min) × confidence<br>
+                        Value = lot × 100 oz × price
+                    </div>
+                </div>
+                <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Settings Modal
+        let settingsModal = null;
+        let currentMarketPrice = 0;
+        
+        function updateLotPreview() {
+            const lotMin = parseFloat(document.getElementById('lotMin').value) || 0.01;
+            const lotMax = parseFloat(document.getElementById('lotMax').value) || 0.1;
+            const price = currentMarketPrice || 4500; // Default to 4500 if no price
+            
+            // Calculate dollar values (1 lot = 100 oz for GOLD)
+            const minValue = lotMin * 100 * price;
+            const maxValue = lotMax * 100 * price;
+            
+            document.getElementById('lotMinValue').textContent = lotMin.toFixed(2);
+            document.getElementById('lotMaxValue').textContent = lotMax.toFixed(2);
+            document.getElementById('lotMinPrice').textContent = minValue.toFixed(0);
+            document.getElementById('lotMaxPrice').textContent = maxValue.toFixed(0);
+        }
+        
+        function showSettingsModal() {
+            if (!settingsModal) {
+                settingsModal = document.getElementById('settingsModal');
+            }
+            
+            // Get current price first
+            fetch(API_BASE + '/api/price')
+                .then(res => res.json())
+                .then(data => {
+                    currentMarketPrice = data.bid || data.price || 4500;
+                    document.getElementById('currentPriceDisplay').textContent = '$' + currentMarketPrice.toFixed(2);
+                    
+                    // Then load settings
+                    return fetch(API_BASE + '/api/settings');
+                })
+                .then(res => res.json())
+                .then(settings => {
+                    document.getElementById('lotMin').value = settings.lot_min || 0.01;
+                    document.getElementById('lotMax').value = settings.lot_max || 0.1;
+                    document.getElementById('slPercent').value = settings.sl_percent || 1.0;
+                    document.getElementById('tpPercent').value = settings.tp_percent || 1.5;
+                    updateLotPreview();
+                });
+            
+            settingsModal.style.display = 'flex';
+        }
+        
+        function closeSettingsModal() {
+            if (settingsModal) {
+                settingsModal.style.display = 'none';
+            }
+        }
+        
+        function saveSettings() {
+            const settings = {
+                lot_min: parseFloat(document.getElementById('lotMin').value) || 0.01,
+                lot_max: parseFloat(document.getElementById('lotMax').value) || 0.1,
+                sl_percent: parseFloat(document.getElementById('slPercent').value) || 1.0,
+                tp_percent: parseFloat(document.getElementById('tpPercent').value) || 1.5
+            };
+            
+            fetch(API_BASE + '/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(settings)
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Settings saved successfully!');
+                    closeSettingsModal();
+                } else {
+                    alert('Error saving settings: ' + result.error);
+                }
+            })
+            .catch(err => {
+                alert('Error saving settings: ' + err);
+            });
+        }
+        
+        // Close modal on outside click
+        document.getElementById('settingsModal').onclick = function(e) {
+            if (e.target === this) {
+                closeSettingsModal();
+            }
+        };
+    </script>
+</body>
+</html>
