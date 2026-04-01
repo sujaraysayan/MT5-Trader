@@ -232,14 +232,8 @@ class TradingSystem:
         
         return signal
     
-    def execute_trade(self, signal: TradingSignal, data: dict = None):
+    def execute_trade(self, signal: TradingSignal):
         """Execute trade based on signal."""
-        if signal.signal_type.value == 'hold':
-            return
-        
-        # Get market data if not provided
-        if data is None:
-            data = self.get_market_data()
         
         # Check current positions count - limit to max 3 positions
         open_positions = get_open_trades()
@@ -318,9 +312,7 @@ class TradingSystem:
                     "type_time": mt5.ORDER_TIME_GTC,
                     "type_filling": mt5.ORDER_FILLING_IOC
                 }
-                
                 logger.info(f"Sending {signal.signal_type.value.upper()} order: {volume} lots @ {trade_price}")
-                
                 # Send order
                 result = mt5.order_send(request)
                 logger.info(f"Order result: {result}")
@@ -344,12 +336,12 @@ class TradingSystem:
                         
                         # Save decision to history
                         strategies_list = [
-                            {"name": s.name, "signal": s.analyze(data).signal_type.value, "confidence": s.analyze(data).confidence}
-                            for s in self.strategies
+                            {"name": s['name'], "signal": s['signal'], "confidence": s['confidence']}
+                            for s in signal.metadata.get('signals', [])
                         ]
                         save_decision(
                             action=signal.signal_type.value.upper(),
-                            reason=f"Strategy {signal.signal_type.value} with {signal.confidence:.0%} confidence",
+                            reason=signal.metadata.get('reason', ''),
                             price=trade_price,
                             volume=volume,
                             profit=0,
@@ -384,8 +376,8 @@ class TradingSystem:
             
             # Save decision to history
             strategies_list = [
-                {"Name": s.name, "signal": s.analyze(data).signal_type.value, "confidence": s.analyze(data).confidence}
-                for s in self.strategies
+                {"name": s['name'], "signal": s['signal'], "confidence": s['confidence']}
+                for s in signal.metadata.get('signals', [])
             ]
             save_decision(
                 action=f"EXEC_{signal.signal_type.value.upper()}",
@@ -481,11 +473,11 @@ class TradingSystem:
                         
                         # Save decision to history
                         strategies_list = [
-                            {"name": s.name, "signal": s.analyze(data).signal_type.value, "confidence": s.analyze(data).confidence}
-                            for s in self.strategies
+                            {"name": s['name'], "signal": s['signal'], "confidence": s['confidence']}
+                            for s in signal.metadata.get('signals', [])
                         ]
                         save_decision(
-                            action="CLOSE",
+                            action=f"{signal.signal_type.value.upper()}-CLOSE",
                             reason=close_reason,
                             price=pos.price_open,
                             volume=pos.volume,
@@ -529,7 +521,7 @@ class TradingSystem:
         if signal.signal_type.value != 'hold':
             logger.info(f"[{timestamp}] {signal}")
             try:
-                self.execute_trade(signal, data)
+                self.execute_trade(signal)
             except Exception as e:
                 import traceback
                 logger.error(f"[{timestamp}] ERROR execute_trade: {e} | {traceback.format_exc()}")
@@ -537,8 +529,8 @@ class TradingSystem:
             # Save HOLD decision
             try:
                 strategies_list = [
-                    {"name": s.name, "signal": s.analyze(data).signal_type.value, "confidence": s.analyze(data).confidence}
-                    for s in self.strategies
+                    {"name": s['name'], "signal": s['signal'], "confidence": s['confidence']}
+                    for s in signal.metadata.get('signals', [])
                 ]
                 save_decision(
                     action=signal.signal_type.value.upper(),

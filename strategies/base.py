@@ -108,21 +108,22 @@ class CompositeStrategy(BaseStrategy):
         """Analyze using all strategies and find consensus.
         
         Logic:
-        1. If BUY count > 3 → BUY
-        2. If SELL count > 3 → SELL
+        1. If BUY count >= 3 → BUY
+        2. If SELL count >= 3 → SELL
         3. If BUY == SELL → compare avg confidence
         4. Otherwise → HOLD
         """
         signals = []
-        
+        strategy_result_list = []
         for strategy in self.strategies:
             sig = strategy.analyze(data)
             signals.append(sig)
+            strategy_result_list.append({"name": strategy.name, "signal": sig.signal_type.value, "confidence": sig.confidence})
         
         # Count signals
         buy_signals = [s for s in signals if s.signal_type == SignalType.BUY]
         sell_signals = [s for s in signals if s.signal_type == SignalType.SELL]
-        
+      
         buy_count = len(buy_signals)
         sell_count = len(sell_signals)
         
@@ -140,7 +141,7 @@ class CompositeStrategy(BaseStrategy):
                     signal_type=SignalType.BUY,
                     strength=SignalStrength.STRONG if buy_count > 6 else SignalStrength.MEDIUM,
                     confidence=avg_buy_conf,
-                    metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                    metadata={'signals': strategy_result_list, 'reason': reason}
                 )
             elif sell_count > buy_count:
                 reason = f"SELL: {sell_count} > {buy_count} strategies"
@@ -149,7 +150,7 @@ class CompositeStrategy(BaseStrategy):
                     signal_type=SignalType.SELL,
                     strength=SignalStrength.STRONG if sell_count > 6 else SignalStrength.MEDIUM,
                     confidence=avg_sell_conf,
-                    metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                    metadata={'signals': strategy_result_list, 'reason': reason}
                 )
             else:
                 # Equal counts - tie breaker by confidence
@@ -160,7 +161,7 @@ class CompositeStrategy(BaseStrategy):
                         signal_type=SignalType.BUY,
                         strength=SignalStrength.MEDIUM,
                         confidence=avg_buy_conf,
-                        metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                        metadata={'signals': strategy_result_list, 'reason': reason}
                     )
                 elif avg_sell_conf > avg_buy_conf:
                     reason = f"TIE SELL: {buy_count}={sell_count}, conf {avg_sell_conf:.1%} > {avg_buy_conf:.1%}"
@@ -169,7 +170,7 @@ class CompositeStrategy(BaseStrategy):
                         signal_type=SignalType.SELL,
                         strength=SignalStrength.MEDIUM,
                         confidence=avg_sell_conf,
-                        metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                        metadata={'signals': strategy_result_list, 'reason': reason}
                     )
                 else:
                     reason = f"TIE HOLD: equal count and confidence"
@@ -178,7 +179,7 @@ class CompositeStrategy(BaseStrategy):
                         signal_type=SignalType.HOLD,
                         strength=SignalStrength.WEAK,
                         confidence=0.5,
-                        metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                        metadata={'signals': strategy_result_list, 'reason': reason}
                     )
         elif buy_count >= 3:
             # Only BUY has enough signals
@@ -188,7 +189,7 @@ class CompositeStrategy(BaseStrategy):
                 signal_type=SignalType.BUY,
                 strength=SignalStrength.STRONG if buy_count > 6 else SignalStrength.MEDIUM,
                 confidence=avg_buy_conf,
-                metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                metadata={'signals': strategy_result_list, 'reason': reason}
             )
         elif sell_count >= 3:
             # Only SELL has enough signals
@@ -198,44 +199,15 @@ class CompositeStrategy(BaseStrategy):
                 signal_type=SignalType.SELL,
                 strength=SignalStrength.STRONG if sell_count > 6 else SignalStrength.MEDIUM,
                 confidence=avg_sell_conf,
-                metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                metadata={'signals': strategy_result_list, 'reason': reason}
             )
-        elif buy_count == sell_count and buy_count > 0:
-            # Tie breaker: compare confidence
-            if avg_buy_conf > avg_sell_conf:
-                reason = f"TIE BUY: {buy_count}={sell_count}, BUY conf {avg_buy_conf:.1%} > SELL conf {avg_sell_conf:.1%}"
-                return TradingSignal(
-                    strategy_name=self.name,
-                    signal_type=SignalType.BUY,
-                    strength=SignalStrength.MEDIUM,
-                    confidence=avg_buy_conf,
-                    metadata={'signals': [str(s) for s in signals], 'reason': reason}
-                )
-            elif avg_sell_conf > avg_buy_conf:
-                reason = f"TIE SELL: {buy_count}={sell_count}, SELL conf {avg_sell_conf:.1%} > BUY conf {avg_buy_conf:.1%}"
-                return TradingSignal(
-                    strategy_name=self.name,
-                    signal_type=SignalType.SELL,
-                    strength=SignalStrength.MEDIUM,
-                    confidence=avg_sell_conf,
-                    metadata={'signals': [str(s) for s in signals], 'reason': reason}
-                )
-            else:
-                reason = f"TIE HOLD: {buy_count}={sell_count}, equal confidence {avg_buy_conf:.1%}"
-                return TradingSignal(
-                    strategy_name=self.name,
-                    signal_type=SignalType.HOLD,
-                    strength=SignalStrength.WEAK,
-                    confidence=0.5,
-                    metadata={'signals': [str(s) for s in signals], 'reason': reason}
-                )
         else:
-            # Not enough signals
-            reason = f"HOLD: BUY={buy_count}, SELL={sell_count} (need > 3 each)"
+            # Not enough signals (both must be >= 3)
+            reason = f"HOLD: BUY={buy_count}, SELL={sell_count} (need both >= 3)"
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.HOLD,
                 strength=SignalStrength.WEAK,
                 confidence=0.5,
-                metadata={'signals': [str(s) for s in signals], 'reason': reason}
+                metadata={'signals': strategy_result_list, 'reason': reason}
             )
