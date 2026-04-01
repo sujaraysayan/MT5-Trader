@@ -114,6 +114,22 @@ def init_database():
         )
     """)
     
+    # Position P&L snapshots table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS position_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            position_id INTEGER NOT NULL,
+            timestamp TEXT NOT NULL,
+            price REAL NOT NULL,
+            pnl REAL NOT NULL,
+            equity REAL NOT NULL,
+            balance REAL NOT NULL,
+            volume REAL,
+            direction TEXT,
+            FOREIGN KEY (position_id) REFERENCES trades (id)
+        )
+    """)
+    
     conn.commit()
     conn.close()
     print(f"Database initialized: {DATABASE_PATH}")
@@ -234,6 +250,52 @@ def get_decision_history(limit: int = 50) -> List[Dict]:
         ORDER BY timestamp DESC 
         LIMIT ?
     """, (limit,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
+
+
+def save_position_snapshot(position_id: int, price: float, pnl: float, 
+                         equity: float, balance: float, volume: float = None,
+                         direction: str = None) -> int:
+    """Save a position P&L snapshot for curve tracking."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO position_snapshots 
+        (position_id, timestamp, price, pnl, equity, balance, volume, direction)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        position_id,
+        datetime.now().isoformat(),
+        price,
+        pnl,
+        equity,
+        balance,
+        volume,
+        direction
+    ))
+    
+    snapshot_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return snapshot_id
+
+
+def get_position_snapshots(position_id: int) -> List[Dict]:
+    """Get P&L history for a specific position."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT * FROM position_snapshots 
+        WHERE position_id = ?
+        ORDER BY timestamp ASC
+    """, (position_id,))
     
     rows = cursor.fetchall()
     conn.close()

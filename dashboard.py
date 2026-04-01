@@ -82,7 +82,7 @@ def api_save_settings():
 # Routes
 # =====================================================================
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
     """Main dashboard page."""
     return render_template('dashboard.html')
@@ -354,6 +354,8 @@ def api_trades():
                         'volume': entry_deal.volume,
                         'profit': exit_deal.profit,
                         'timestamp': datetime.fromtimestamp(exit_deal.time).strftime('%Y-%m-%d %H:%M'),
+                        'timestamp_open': datetime.fromtimestamp(entry_deal.time).strftime('%Y-%m-%d %H:%M'),
+                        'timestamp_close': datetime.fromtimestamp(exit_deal.time).strftime('%Y-%m-%d %H:%M'),
                         'comment': exit_deal.comment or entry_deal.comment,
                         'status': 'CLOSED'
                     })
@@ -370,6 +372,8 @@ def api_trades():
                         'volume': entry_deal.volume,
                         'profit': None,
                         'timestamp': datetime.fromtimestamp(entry_deal.time).strftime('%Y-%m-%d %H:%M'),
+                        'timestamp_open': datetime.fromtimestamp(entry_deal.time).strftime('%Y-%m-%d %H:%M'),
+                        'timestamp_close': None,
                         'comment': entry_deal.comment,
                         'status': 'OPEN'
                     })
@@ -510,6 +514,17 @@ def api_close_position():
             
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/position-snapshots/<int:position_id>')
+def api_position_snapshots(position_id):
+    """Get P&L snapshots for a specific position."""
+    from database import get_position_snapshots
+    snapshots = get_position_snapshots(position_id)
+    return jsonify({
+        'data': snapshots,
+        'count': len(snapshots)
+    })
 
 
 @app.route('/api/decisions')

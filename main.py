@@ -242,6 +242,25 @@ class TradingSystem:
             logger.debug(f"Already have {len(open_positions)} positions, skipping")
             return
         
+        # Check confidence > 50%
+        if signal.confidence <= 0.5:
+            logger.info(f"Skipping order: confidence {signal.confidence:.0%} <= 50%")
+            # Save HOLD decision
+            data = self.get_market_data()
+            strategies_list = signal.metadata.get('signals', []) if signal.metadata else []
+            save_decision(
+                action="HOLD",
+                reason=f"Confidence {signal.confidence:.0%} <= 50%, skipped",
+                price=data['price'],
+                volume=0,
+                profit=0,
+                position_id=None,
+                strategies_analyzed=strategies_list,
+                final_decision="hold",
+                confidence=signal.confidence
+            )
+            return
+        
         # Calculate position size
         account_balance = 500
         if self.mt5 and self.mt5.is_connected():
