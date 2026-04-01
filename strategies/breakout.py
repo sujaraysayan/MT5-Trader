@@ -48,6 +48,12 @@ class BreakoutStrategy(BaseStrategy):
         rsi = indicators.get('rsi_14', 50)
         
         # Breakout calculations
+        # Prevent division by zero
+        if resistance == 0 or resistance is None or price == 0:
+            resistance = price * 1.01 if price > 0 else 1.0
+        if support == 0 or support is None or price == 0:
+            support = price * 0.99 if price > 0 else 0.99
+        
         resistance_distance = (price - resistance) / resistance * 100
         support_distance = (support - price) / support * 100
         

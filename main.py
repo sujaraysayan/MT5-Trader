@@ -232,10 +232,14 @@ class TradingSystem:
         
         return signal
     
-    def execute_trade(self, signal: TradingSignal):
+    def execute_trade(self, signal: TradingSignal, data: dict = None):
         """Execute trade based on signal."""
         if signal.signal_type.value == 'hold':
             return
+        
+        # Get market data if not provided
+        if data is None:
+            data = self.get_market_data()
         
         # Check current positions count - limit to max 3 positions
         open_positions = get_open_trades()
@@ -260,14 +264,21 @@ class TradingSystem:
         if self.mt5 and self.mt5.is_connected():
             try:
                 import MetaTrader5 as mt5
-                
+                mt5.initialize()
+                time.sleep(1)
                 # Ensure symbol is selected
                 mt5.symbol_select(self.symbol, True)
                 
-                # Get symbol info
-                symbol_info = mt5.symbol_info(self.symbol)
+                # Get symbol info with retry
+                symbol_info = None
+                for attempt in range(3):
+                    symbol_info = mt5.symbol_info(self.symbol)
+                    if symbol_info:
+                        break
+                    time.sleep(0.5)
+                
                 if not symbol_info:
-                    logger.error(f"Symbol {self.symbol} not found")
+                    logger.error(f"Symbol {self.symbol} not found after 3 attempts")
                     return
                 
                 # Determine order type and price
@@ -337,8 +348,8 @@ class TradingSystem:
                             for s in self.strategies
                         ]
                         save_decision(
-                            action="OPEN",
-                            reason=f"Strategy {signal.signal_type.value} signal",
+                            action=signal.signal_type.value.upper(),
+                            reason=f"Strategy {signal.signal_type.value} with {signal.confidence:.0%} confidence",
                             price=trade_price,
                             volume=volume,
                             profit=0,
@@ -377,8 +388,8 @@ class TradingSystem:
                 for s in self.strategies
             ]
             save_decision(
-                action="OPEN_SIM",
-                reason=f"[SIMULATION] Strategy {signal.signal_type.value}",
+                action=f"EXEC_{signal.signal_type.value.upper()}",
+                reason=f"[SIM] Order executed: {signal.signal_type.value}",
                 price=price,
                 volume=volume,
                 profit=0,
@@ -491,39 +502,65 @@ class TradingSystem:
         """Run one iteration of the trading loop."""
         timestamp = datetime.now().strftime('%H:%M:%S')
         
-        # Get market data first
-        data = self.get_market_data()
+        # Step 1: Get market data
+        try:
+            data = self.get_market_data()
+        except Exception as e:
+            import traceback
+            logger.error(f"[{timestamp}] ERROR get_market_data: {e} | {traceback.format_exc()}")
+            return None
         
-        # Check and close profit if target reached
-        self.check_and_close_profit(min_profit=50)
+        # Step 2: Check and close profit
+        try:
+            self.check_and_close_profit(min_profit=50)
+        except Exception as e:
+            import traceback
+            logger.error(f"[{timestamp}] ERROR check_and_close_profit: {e} | {traceback.format_exc()}")
         
-        # Get signal
-        signal = self.analyze_and_signal()
+        # Step 3: Get signal
+        try:
+            signal = self.analyze_and_signal()
+        except Exception as e:
+            import traceback
+            logger.error(f"[{timestamp}] ERROR analyze_and_signal: {e} | {traceback.format_exc()}")
+            return None
         
-        # Always save decision to history
-        strategies_list = [
-            {"name": s.name, "signal": s.analyze(data).signal_type.value, "confidence": s.analyze(data).confidence}
-            for s in self.strategies
-        ]
-        save_decision(
-            action=signal.signal_type.value.upper(),
-            reason=f"Strategy {signal.signal_type.value} with {signal.confidence:.0%} confidence",
-            price=data['price'],
-            volume=0,
-            profit=0,
-            position_id=None,
-            strategies_analyzed=strategies_list,
-            final_decision=signal.signal_type.value,
-            confidence=signal.confidence
-        )
-        
-        # Execute trade if BUY or SELL signal
+        # Step 4: Execute trade or save HOLD decision
         if signal.signal_type.value != 'hold':
             logger.info(f"[{timestamp}] {signal}")
-            self.execute_trade(signal)
+            try:
+                self.execute_trade(signal, data)
+            except Exception as e:
+                import traceback
+                logger.error(f"[{timestamp}] ERROR execute_trade: {e} | {traceback.format_exc()}")
+        else:
+            # Save HOLD decision
+            try:
+                strategies_list = [
+                    {"name": s.name, "signal": s.analyze(data).signal_type.value, "confidence": s.analyze(data).confidence}
+                    for s in self.strategies
+                ]
+                save_decision(
+                    action=signal.signal_type.value.upper(),
+                    reason=f"Strategy {signal.signal_type.value} with {signal.confidence:.0%} confidence",
+                    price=data['price'],
+                    volume=0,
+                    profit=0,
+                    position_id=None,
+                    strategies_analyzed=strategies_list,
+                    final_decision=signal.signal_type.value,
+                    confidence=signal.confidence
+                )
+            except Exception as e:
+                import traceback
+                logger.error(f"[{timestamp}] ERROR save_decision: {e} | {traceback.format_exc()}")
         
-        # Update equity
-        self.update_equity()
+        # Step 6: Update equity
+        try:
+            self.update_equity()
+        except Exception as e:
+            import traceback
+            logger.error(f"[{timestamp}] ERROR update_equity: {e} | {traceback.format_exc()}")
         
         return signal
     
@@ -542,9 +579,6 @@ class TradingSystem:
             try:
                 self.run_once()
                 iteration += 1
-                
-                if iteration % 10 == 0:
-                    logger.info(f"Iteration {iteration} completed")
                 
             except Exception as e:
                 logger.error(f"Error in trading loop: {e}")
@@ -613,6 +647,10 @@ def run_full_system():
 
 def main():
     """Main entry point."""
+    # Write PID to file
+    with open("main.pid", "w") as f:
+        f.write(str(os.getpid()))
+    
     run_trading()
 
 if __name__ == "__main__":

@@ -57,9 +57,12 @@ class VolumeSpikeStrategy(BaseStrategy):
         else:
             volume_ratio = 1.0
         
-        # Price change
+        # Price change - safe division
         closes = [h.get('close', 0) for h in history]
-        price_change = (closes[-1] - closes[-2]) / closes[-2] * 100 if len(closes) >= 2 else 0
+        if len(closes) >= 2 and closes[-2] > 0:
+            price_change = (closes[-1] - closes[-2]) / closes[-2] * 100
+        else:
+            price_change = 0
         
         # Spike detection
         is_spike = volume_ratio >= self.spike_multiplier

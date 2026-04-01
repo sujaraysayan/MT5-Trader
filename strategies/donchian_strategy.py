@@ -65,9 +65,12 @@ class DonchianChannelStrategy(BaseStrategy):
         prev_high = highs[-2] if len(highs) >= 2 else highs[-1]
         prev_low = lows[-2] if len(lows) >= 2 else lows[-1]
         
+        # Safe division: if price is 0, use 1
+        safe_price = price if price > 0 else 1.0
+        
         # Bullish breakout
         if prev_high <= prev_upper and price > upper_channel:
-            breakout_pct = (price - upper_channel) / price * 100
+            breakout_pct = (price - upper_channel) / safe_price * 100
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.BUY,
@@ -87,7 +90,7 @@ class DonchianChannelStrategy(BaseStrategy):
         
         # Bearish breakdown
         elif prev_low >= prev_lower and price < lower_channel:
-            breakdown_pct = (lower_channel - price) / price * 100
+            breakdown_pct = (lower_channel - price) / safe_price * 100
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.SELL,

@@ -65,9 +65,12 @@ class ATRBreakoutStrategy(BaseStrategy):
         # ATR expansion detection
         atr_expanded = atr > atr * 1.1  # ATR is increasing
         
+        # Safe division - prevent ATR = 0
+        safe_atr = atr if atr > 0 else 1.0
+        
         # Bullish breakout
         if prev_high <= prev_high and price > recent_high and atr_expanded:
-            breakout_strength = (price - recent_high) / atr
+            breakout_strength = (price - recent_high) / safe_atr
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.BUY,
@@ -86,7 +89,7 @@ class ATRBreakoutStrategy(BaseStrategy):
         
         # Bearish breakdown
         elif prev_low >= prev_low and price < recent_low and atr_expanded:
-            breakout_strength = (recent_low - price) / atr
+            breakout_strength = (recent_low - price) / safe_atr
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.SELL,

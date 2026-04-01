@@ -57,9 +57,12 @@ class SRBreakStrategy(BaseStrategy):
         # Breakout detection
         tolerance_amount = price * self.tolerance
         
+        # Safe division
+        safe_price = price if price > 0 else 1.0
+        
         # Bullish breakout
         if price > nearest_resistance + tolerance_amount:
-            break_strength = (price - nearest_resistance) / price * 100
+            break_strength = (price - nearest_resistance) / safe_price * 100
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.BUY,
@@ -78,7 +81,7 @@ class SRBreakStrategy(BaseStrategy):
         
         # Bearish breakdown
         elif price < nearest_support - tolerance_amount:
-            break_strength = (nearest_support - price) / price * 100
+            break_strength = (nearest_support - price) / safe_price * 100
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.SELL,

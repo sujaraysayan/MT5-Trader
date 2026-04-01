@@ -70,7 +70,8 @@ class StructureStrategy(BaseStrategy):
         
         # Consolidation
         range_size = recent_high - recent_low
-        range_pct = range_size / price * 100
+        safe_price = price if price > 0 else 1.0
+        range_pct = range_size / safe_price * 100
         is_consolidating = range_pct < 3  # Less than 3% range
         
         adx = indicators.get('adx_14', 0)

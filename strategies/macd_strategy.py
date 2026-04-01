@@ -89,12 +89,14 @@ class MACDStrategy(BaseStrategy):
                 )
         
         # Trend direction based on histogram
+        # Safe division: if price is 0, use 1
+        safe_price = price if price > 0 else 1.0
         if macd_hist > 0:
             return TradingSignal(
                 strategy_name=self.name,
                 signal_type=SignalType.BUY,
                 strength=SignalStrength.WEAK,
-                confidence=0.5 + min(abs(macd_hist) / price * 100, 0.3),
+                confidence=0.5 + min(abs(macd_hist) / safe_price * 100, 0.3),
                 metadata={
                     'macd': macd,
                     'signal': macd_signal,
@@ -107,7 +109,7 @@ class MACDStrategy(BaseStrategy):
                 strategy_name=self.name,
                 signal_type=SignalType.SELL,
                 strength=SignalStrength.WEAK,
-                confidence=0.5 + min(abs(macd_hist) / price * 100, 0.3),
+                confidence=0.5 + min(abs(macd_hist) / safe_price * 100, 0.3),
                 metadata={
                     'macd': macd,
                     'signal': macd_signal,

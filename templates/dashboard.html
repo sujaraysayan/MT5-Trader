@@ -430,13 +430,16 @@
                                 <th>Date</th>
                                 <th>Symbol</th>
                                 <th>Direction</th>
+                                <th>Lot</th>
+                                <th>Value</th>
+                                <th>Holding</th>
                                 <th>Entry</th>
                                 <th>Exit</th>
                                 <th>P&L</th>
                             </tr>
                         </thead>
                         <tbody id="tradesTable">
-                            <tr><td colspan="6" style="text-align:center;color:#718096">Loading...</td></tr>
+                            <tr><td colspan="9" style="text-align:center;color:#718096">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -457,6 +460,8 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Direction</th>
+                                <th>Lot</th>
+                                <th>Value</th>
                                 <th>Entry</th>
                                 <th>Current</th>
                                 <th>P&L</th>
@@ -464,7 +469,7 @@
                             </tr>
                         </thead>
                         <tbody id="positionsTable">
-                            <tr><td colspan="6" style="text-align:center;color:#718096">No open positions</td></tr>
+                            <tr><td colspan="8" style="text-align:center;color:#718096">No open positions</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -676,22 +681,37 @@
                 const tbody = document.getElementById('tradesTable');
                 
                 if (data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#718096">No trade history</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#718096">No trade history</td></tr>';
                     return;
                 }
                 
-                tbody.innerHTML = data.data.map(trade => `
+                tbody.innerHTML = data.data.map(trade => {
+                    const lotValue = trade.volume ? (trade.volume * trade.entry_price * 100).toFixed(2) : '--';
+                    // Calculate holding time
+                    let holdingTime = '--';
+                    if (trade.timestamp_open && trade.timestamp_close) {
+                        const open = new Date(trade.timestamp_open);
+                        const close = new Date(trade.timestamp_close);
+                        const diffMs = close - open;
+                        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        holdingTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    }
+                    return `
                     <tr>
                         <td>${formatDateTime(trade.timestamp)}</td>
                         <td>${trade.symbol}</td>
                         <td>${getSignalBadge(trade.direction)}</td>
+                        <td>${trade.volume || '--'}</td>
+                        <td>${trade.volume ? '$' + formatNumber(lotValue, 2) : '--'}</td>
+                        <td>${holdingTime}</td>
                         <td>${formatNumber(trade.entry_price)}</td>
                         <td>${trade.exit_price ? formatNumber(trade.exit_price) : '--'}</td>
                         <td class="pnl ${trade.profit >= 0 ? 'positive' : 'negative'}">
                             ${trade.profit ? '$' + formatNumber(trade.profit) : '--'}
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
                 
             } catch (e) {
                 console.error('Trades update error:', e);
@@ -707,14 +727,18 @@
                 const tbody = document.getElementById('positionsTable');
                 
                 if (data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#718096">No open positions</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#718096">No open positions</td></tr>';
                     return;
                 }
                 
-                tbody.innerHTML = data.data.map(pos => `
+                tbody.innerHTML = data.data.map(pos => {
+                    const lotValue = (pos.volume * pos.price_open * 100).toFixed(2);  // Gold: 100 oz per lot
+                    return `
                     <tr>
                         <td>#${pos.ticket || pos.id}</td>
                         <td>${getSignalBadge(pos.direction)}</td>
+                        <td>${pos.volume}</td>
+                        <td>$${formatNumber(lotValue, 2)}</td>
                         <td>$${formatNumber(pos.price_open, 2)}</td>
                         <td>$${formatNumber(pos.current_price, 2)}</td>
                         <td class="pnl ${pos.profit >= 0 ? 'positive' : 'negative'}" style="font-size:14px;font-weight:bold;">
@@ -724,7 +748,7 @@
                             <button class="btn-close" onclick="closePosition('${pos.ticket || pos.id}')">Close</button>
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
                 
                 document.getElementById('openPositions').textContent = data.data.length;
                 
@@ -778,17 +802,32 @@
                     return;
                 }
                 
-                tbody.innerHTML = data.data.map(decision => `
+                tbody.innerHTML = data.data.map(decision => {
+                    // Action color
+                    let actionColor = '#718096';  // gray default
+                    let actionBg = 'rgba(113, 128, 150, 0.2)';
+                    if (decision.action === 'BUY') {
+                        actionColor = '#00d26a';
+                        actionBg = 'rgba(0, 210, 106, 0.15)';
+                    } else if (decision.action === 'SELL') {
+                        actionColor = '#ff4757';
+                        actionBg = 'rgba(255, 71, 87, 0.15)';
+                    } else if (decision.action === 'HOLD') {
+                        actionColor = '#feca57';
+                        actionBg = 'rgba(254, 202, 87, 0.15)';
+                    }
+                    
+                    return `
                     <tr>
                         <td>${formatDateTime(decision.timestamp)}</td>
-                        <td>${decision.action}</td>
+                        <td style="color:${actionColor};font-weight:bold;padding:4px 8px;border-radius:4px;background:${actionBg}">${decision.action}</td>
                         <td>${decision.reason || '--'}</td>
                         <td>${decision.price ? formatNumber(decision.price) : '--'}</td>
                         <td class="pnl ${decision.profit >= 0 ? 'positive' : 'negative'}">
                             ${decision.profit ? '$' + formatNumber(decision.profit) : '--'}
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
                 
             } catch (e) {
                 console.error('Decisions update error:', e);

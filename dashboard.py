@@ -645,4 +645,8 @@ def get_local_ip():
 # =====================================================================
 
 if __name__ == "__main__":
+    # Write PID to file
+    with open("dashboard.pid", "w") as f:
+        f.write(str(os.getpid()))
+    
     run_dashboard()

@@ -316,18 +316,51 @@ def close_trade(trade_id: int, exit_price: float, pnl: float, pnl_pct: float):
 
 
 def get_open_trades() -> List[Dict]:
-    """Get all open trades."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT * FROM trades WHERE status = 'OPEN'
-    """)
-    
-    rows = cursor.fetchall()
-    conn.close()
-    
-    return [dict(row) for row in rows]
+    """Get all open trades. Auto-cleans stale records by syncing with MT5."""
+    try:
+        import MetaTrader5 as mt5
+        mt5.initialize()
+        mt5_positions = mt5.positions_get()
+        mt5.shutdown()
+        
+        if mt5_positions:
+            mt5_tickets = set(pos.ticket for pos in mt5_positions)
+        else:
+            mt5_tickets = set()
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Get open trades from DB
+        cursor.execute("SELECT id, status FROM trades WHERE status = 'OPEN'")
+        db_trades = cursor.fetchall()
+        
+        # Delete stale records (in DB but not in MT5)
+        deleted = 0
+        for (trade_id, status) in db_trades:
+            if trade_id not in mt5_tickets:
+                cursor.execute("DELETE FROM trades WHERE id = ?", (trade_id,))
+                deleted += 1
+        
+        if deleted > 0:
+            conn.commit()
+            print(f"[DB Cleanup] Removed {deleted} stale trades")
+        
+        # Get fresh list
+        cursor.execute("SELECT * FROM trades WHERE status = 'OPEN'")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+        
+    except Exception as e:
+        # If MT5 not available, just return DB records
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM trades WHERE status = 'OPEN'")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
 
 
 def get_trade_history(limit: int = 50) -> List[Dict]:

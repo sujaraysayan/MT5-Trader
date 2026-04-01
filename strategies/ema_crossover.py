@@ -68,8 +68,9 @@ class EMACrossoverStrategy(BaseStrategy):
         bullish_cross = fast_prev <= slow_prev and fast_curr > slow_curr
         bearish_cross = fast_prev >= slow_prev and fast_curr < slow_curr
         
-        # Distance from crossover
-        crossover_distance = abs(fast_curr - slow_curr) / price * 100
+        # Distance from crossover - safe division
+        safe_price = price if price > 0 else 1.0
+        crossover_distance = abs(fast_curr - slow_curr) / safe_price * 100
         
         if bullish_cross:
             return TradingSignal(
