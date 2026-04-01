@@ -96,7 +96,7 @@
         /* Main Content */
         .main-content {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 60% 40%;
             gap: 20px;
             padding: 0 30px 30px;
         }
@@ -377,49 +377,14 @@
             <div class="stat-value" id="totalPnL">$0.00</div>
             <div class="stat-change" id="pnLChange">--</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Open Positions</div>
-            <div class="stat-value" id="openPositions">0</div>
-            <div class="stat-change" id="positionsChange">--</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Signals Today</div>
-            <div class="stat-value" id="signalsToday">0</div>
-            <div class="stat-change" id="signalsChange">--</div>
-        </div>
     </div>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Left Column -->
         <div>
-            <!-- Signals Panel -->
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">📊 Recent Signals</span>
-                    <span class="refresh-indicator">Auto-refresh: 15s</span>
-                </div>
-                <div class="panel-body">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Strategy</th>
-                                <th>Signal</th>
-                                <th>Price</th>
-                                <th>Confidence</th>
-                                <th>SL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="signalsTable">
-                            <tr><td colspan="6" style="text-align:center;color:#718096">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
             <!-- Trade History Panel -->
-            <div class="panel" style="margin-top: 20px;">
+            <div class="panel">
                 <div class="panel-header">
                     <span class="panel-title">📜 Trade History</span>
                 </div>
@@ -440,6 +405,29 @@
                         </thead>
                         <tbody id="tradesTable">
                             <tr><td colspan="9" style="text-align:center;color:#718096">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Decision History Panel -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <span class="panel-title">🧠 Decision History</span>
+                </div>
+                <div class="panel-body" style="max-height: 300px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Action</th>
+                                <th>Reason</th>
+                                <th>Price</th>
+                                <th>Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="decisionsTable">
+                            <tr><td colspan="5" style="text-align:center;color:#718096">No decisions yet</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -509,29 +497,6 @@
                 </div>
                 <div class="chart-container">
                     <canvas id="equityChart"></canvas>
-                </div>
-            </div>
-            
-            <!-- Decision History Panel -->
-            <div class="panel" style="margin-top: 20px;">
-                <div class="panel-header">
-                    <span class="panel-title">🧠 Decision History</span>
-                </div>
-                <div class="panel-body" style="max-height: 300px; overflow-y: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Action</th>
-                                <th>Reason</th>
-                                <th>Price</th>
-                                <th>Profit</th>
-                            </tr>
-                        </thead>
-                        <tbody id="decisionsTable">
-                            <tr><td colspan="5" style="text-align:center;color:#718096">No decisions yet</td></tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
@@ -675,7 +640,7 @@
         // Update trades
         async function updateTrades() {
             try {
-                const res = await fetch(API_BASE + '/api/trades?limit=10');
+                const res = await fetch(API_BASE + '/api/trades?limit=50');
                 const data = await res.json();
                 
                 const tbody = document.getElementById('tradesTable');
@@ -847,10 +812,6 @@
                     priceEl.textContent = '$' + formatNumber(data.bid, 2);
                     changeEl.textContent = '';
                     changeEl.className = 'change';
-                    
-                    // Update equity display
-                    document.getElementById('equity').textContent = 
-                        formatNumber(data.equity);
                 }
             } catch (e) {
                 console.error('Price update error:', e);
