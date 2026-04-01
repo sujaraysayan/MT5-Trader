@@ -135,26 +135,48 @@ class CompositeStrategy(BaseStrategy):
         if buy_count >= 3 and sell_count >= 3:
             # Both have enough signals - compare counts then confidence
             if buy_count > sell_count:
-                reason = f"BUY: {buy_count} > {sell_count} strategies"
-                return TradingSignal(
-                    strategy_name=self.name,
-                    signal_type=SignalType.BUY,
-                    strength=SignalStrength.STRONG if buy_count > 6 else SignalStrength.MEDIUM,
-                    confidence=avg_buy_conf,
-                    metadata={'signals': strategy_result_list, 'reason': reason}
-                )
+                # Check avg confidence > 50%
+                if avg_buy_conf > 0.5:
+                    reason = f"BUY: {buy_count} > {sell_count} strategies, conf {avg_buy_conf:.1%}"
+                    return TradingSignal(
+                        strategy_name=self.name,
+                        signal_type=SignalType.BUY,
+                        strength=SignalStrength.STRONG if buy_count > 6 else SignalStrength.MEDIUM,
+                        confidence=avg_buy_conf,
+                        metadata={'signals': strategy_result_list, 'reason': reason}
+                    )
+                else:
+                    reason = f"HOLD: BUY signal but avg confidence {avg_buy_conf:.1%} <= 50%"
+                    return TradingSignal(
+                        strategy_name=self.name,
+                        signal_type=SignalType.HOLD,
+                        strength=SignalStrength.WEAK,
+                        confidence=avg_buy_conf,
+                        metadata={'signals': strategy_result_list, 'reason': reason}
+                    )
             elif sell_count > buy_count:
-                reason = f"SELL: {sell_count} > {buy_count} strategies"
-                return TradingSignal(
-                    strategy_name=self.name,
-                    signal_type=SignalType.SELL,
-                    strength=SignalStrength.STRONG if sell_count > 6 else SignalStrength.MEDIUM,
-                    confidence=avg_sell_conf,
-                    metadata={'signals': strategy_result_list, 'reason': reason}
-                )
+                # Check avg confidence > 50%
+                if avg_sell_conf > 0.5:
+                    reason = f"SELL: {sell_count} > {buy_count} strategies, conf {avg_sell_conf:.1%}"
+                    return TradingSignal(
+                        strategy_name=self.name,
+                        signal_type=SignalType.SELL,
+                        strength=SignalStrength.STRONG if sell_count > 6 else SignalStrength.MEDIUM,
+                        confidence=avg_sell_conf,
+                        metadata={'signals': strategy_result_list, 'reason': reason}
+                    )
+                else:
+                    reason = f"HOLD: SELL signal but avg confidence {avg_sell_conf:.1%} <= 50%"
+                    return TradingSignal(
+                        strategy_name=self.name,
+                        signal_type=SignalType.HOLD,
+                        strength=SignalStrength.WEAK,
+                        confidence=avg_sell_conf,
+                        metadata={'signals': strategy_result_list, 'reason': reason}
+                    )
             else:
-                # Equal counts - tie breaker by confidence
-                if avg_buy_conf > avg_sell_conf:
+                # Equal counts - tie breaker by confidence (must be > 50%)
+                if avg_buy_conf > avg_sell_conf and avg_buy_conf > 0.5:
                     reason = f"TIE BUY: {buy_count}={sell_count}, conf {avg_buy_conf:.1%} > {avg_sell_conf:.1%}"
                     return TradingSignal(
                         strategy_name=self.name,
@@ -163,7 +185,7 @@ class CompositeStrategy(BaseStrategy):
                         confidence=avg_buy_conf,
                         metadata={'signals': strategy_result_list, 'reason': reason}
                     )
-                elif avg_sell_conf > avg_buy_conf:
+                elif avg_sell_conf > avg_buy_conf and avg_sell_conf > 0.5:
                     reason = f"TIE SELL: {buy_count}={sell_count}, conf {avg_sell_conf:.1%} > {avg_buy_conf:.1%}"
                     return TradingSignal(
                         strategy_name=self.name,
@@ -173,7 +195,7 @@ class CompositeStrategy(BaseStrategy):
                         metadata={'signals': strategy_result_list, 'reason': reason}
                     )
                 else:
-                    reason = f"TIE HOLD: equal count and confidence"
+                    reason = f"HOLD: TIE but avg confidence <= 50%"
                     return TradingSignal(
                         strategy_name=self.name,
                         signal_type=SignalType.HOLD,
@@ -182,25 +204,45 @@ class CompositeStrategy(BaseStrategy):
                         metadata={'signals': strategy_result_list, 'reason': reason}
                     )
         elif buy_count >= 3:
-            # Only BUY has enough signals
-            reason = f"BUY: {buy_count} strategies >= 3 (avg conf: {avg_buy_conf:.1%})"
-            return TradingSignal(
-                strategy_name=self.name,
-                signal_type=SignalType.BUY,
-                strength=SignalStrength.STRONG if buy_count > 6 else SignalStrength.MEDIUM,
-                confidence=avg_buy_conf,
-                metadata={'signals': strategy_result_list, 'reason': reason}
-            )
+            # Only BUY has enough signals - check avg confidence > 50%
+            if avg_buy_conf > 0.5:
+                reason = f"BUY: {buy_count} strategies >= 3, conf {avg_buy_conf:.1%}"
+                return TradingSignal(
+                    strategy_name=self.name,
+                    signal_type=SignalType.BUY,
+                    strength=SignalStrength.STRONG if buy_count > 6 else SignalStrength.MEDIUM,
+                    confidence=avg_buy_conf,
+                    metadata={'signals': strategy_result_list, 'reason': reason}
+                )
+            else:
+                reason = f"HOLD: BUY signal but avg confidence {avg_buy_conf:.1%} <= 50%"
+                return TradingSignal(
+                    strategy_name=self.name,
+                    signal_type=SignalType.HOLD,
+                    strength=SignalStrength.WEAK,
+                    confidence=avg_buy_conf,
+                    metadata={'signals': strategy_result_list, 'reason': reason}
+                )
         elif sell_count >= 3:
-            # Only SELL has enough signals
-            reason = f"SELL: {sell_count} strategies >= 3 (avg conf: {avg_sell_conf:.1%})"
-            return TradingSignal(
-                strategy_name=self.name,
-                signal_type=SignalType.SELL,
-                strength=SignalStrength.STRONG if sell_count > 6 else SignalStrength.MEDIUM,
-                confidence=avg_sell_conf,
-                metadata={'signals': strategy_result_list, 'reason': reason}
-            )
+            # Only SELL has enough signals - check avg confidence > 50%
+            if avg_sell_conf > 0.5:
+                reason = f"SELL: {sell_count} strategies >= 3, conf {avg_sell_conf:.1%}"
+                return TradingSignal(
+                    strategy_name=self.name,
+                    signal_type=SignalType.SELL,
+                    strength=SignalStrength.STRONG if sell_count > 6 else SignalStrength.MEDIUM,
+                    confidence=avg_sell_conf,
+                    metadata={'signals': strategy_result_list, 'reason': reason}
+                )
+            else:
+                reason = f"HOLD: SELL signal but avg confidence {avg_sell_conf:.1%} <= 50%"
+                return TradingSignal(
+                    strategy_name=self.name,
+                    signal_type=SignalType.HOLD,
+                    strength=SignalStrength.WEAK,
+                    confidence=avg_sell_conf,
+                    metadata={'signals': strategy_result_list, 'reason': reason}
+                )
         else:
             # Not enough signals (both must be >= 3)
             reason = f"HOLD: BUY={buy_count}, SELL={sell_count} (need both >= 3)"
