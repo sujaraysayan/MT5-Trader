@@ -252,6 +252,79 @@
             font-size: 12px;
         }
         
+        /* Position Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        
+        .modal-content {
+            background-color: #1a1f2e;
+            margin: 5% auto;
+            padding: 25px;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #718096;
+            cursor: pointer;
+        }
+        
+        .modal-close:hover {
+            color: #fff;
+        }
+        
+        .modal h2 {
+            color: #f0b90b;
+            margin-bottom: 20px;
+        }
+        
+        .modal h3 {
+            color: #e0e0e0;
+            margin: 15px 0 10px;
+        }
+        
+        .modal-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .modal-detail-item {
+            background: #0d1117;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        
+        .modal-detail-item .label {
+            color: #718096;
+            font-size: 12px;
+        }
+        
+        .modal-detail-item .value {
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
         /* Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
@@ -502,6 +575,21 @@
         </div>
     </div>
     
+    <!-- Position Detail Modal -->
+    <div id="positionModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closePositionModal()">&times;</span>
+            <h2 id="modalTitle">Position Details</h2>
+            <div id="positionModalBody">
+                <!-- Details loaded here -->
+            </div>
+            <div id="pnlChartContainer">
+                <h3>P&L Curve</h3>
+                <canvas id="pnlChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
     <!-- Footer -->
     <div class="footer">
         MT5 Gold Trader Dashboard | Auto-refresh every 15 seconds
@@ -591,15 +679,15 @@
                 pnlEl.className = 'stat-value ' + (pnlVal >= 0 ? 'positive' : 'negative');
                 
                 // Avg Win/Loss
-                document.getElementById('avgWin').textContent = '$' + formatNumber(data.avg_win);
-                document.getElementById('avgLoss').textContent = '$' + formatNumber(data.avg_loss);
+                const avgWinEl = document.getElementById('avgWin');
+                const avgLossEl = document.getElementById('avgLoss');
+                const winTradesEl = document.getElementById('winningTrades');
+                const loseTradesEl = document.getElementById('losingTrades');
                 
-                // Trade counts
-                document.getElementById('winningTrades').textContent = data.winning_trades;
-                document.getElementById('losingTrades').textContent = data.losing_trades;
-                
-                // Open positions
-                document.getElementById('openPositions').textContent = '0';
+                if (avgWinEl) avgWinEl.textContent = '$' + formatNumber(data.avg_win);
+                if (avgLossEl) avgLossEl.textContent = '$' + formatNumber(data.avg_loss);
+                if (winTradesEl) winTradesEl.textContent = data.winning_trades || 0;
+                if (loseTradesEl) loseTradesEl.textContent = data.losing_trades || 0;
                 
             } catch (e) {
                 console.error('Performance update error:', e);
@@ -662,8 +750,9 @@
                         const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
                         holdingTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
                     }
+                    const posId = trade.position_id || trade.ticket;
                     return `
-                    <tr>
+                    <tr onclick="showPositionModal(${posId}, ${JSON.stringify(trade).replace(/"/g, '&quot;')})" style="cursor:pointer;">
                         <td>${formatDateTime(trade.timestamp)}</td>
                         <td>${trade.symbol}</td>
                         <td>${getSignalBadge(trade.direction)}</td>
@@ -822,11 +911,126 @@
         async function updateAll() {
             await updateStatus();
             await updatePerformance();
-            await updateSignals();
             await updateTrades();
             await updatePositions();
             await updateDecisions();
             updateCurrentPrice();
+        }
+        
+        // Position Modal Functions
+        let pnlChart = null;
+        
+        function showPositionModal(positionId, data) {
+            document.getElementById('modalTitle').textContent = 'Position #' + positionId;
+            
+            // Build details HTML
+            const details = `
+                <div class="modal-detail">
+                    <div class="modal-detail-item">
+                        <div class="label">Direction</div>
+                        <div class="value" style="color: ${data.direction === 'buy' ? '#00d26a' : '#ff4757'}">${(data.direction || '').toUpperCase()}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Volume</div>
+                        <div class="value">${data.volume || '--'}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Entry Price</div>
+                        <div class="value">$${formatNumber(data.entry_price, 2)}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Exit Price</div>
+                        <div class="value">${data.exit_price ? '$' + formatNumber(data.exit_price, 2) : '--'}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">P&L</div>
+                        <div class="value" style="color: ${(data.profit || 0) >= 0 ? '#00d26a' : '#ff4757'}">$${formatNumber(data.profit || 0, 2)}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Status</div>
+                        <div class="value">${data.status || (data.exit_price ? 'CLOSED' : 'OPEN')}</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('positionModalBody').innerHTML = details;
+            
+            // Load P&L chart
+            loadPnLChart(positionId);
+            
+            // Show modal
+            document.getElementById('positionModal').style.display = 'block';
+        }
+        
+        function closePositionModal() {
+            document.getElementById('positionModal').style.display = 'none';
+            if (pnlChart) {
+                pnlChart.destroy();
+                pnlChart = null;
+            }
+        }
+        
+        async function loadPnLChart(positionId) {
+            try {
+                const res = await fetch(API_BASE + '/api/position-snapshots/' + positionId);
+                const result = await res.json();
+                
+                const chartContainer = document.getElementById('pnlChartContainer');
+                if (result.data && result.data.length > 0) {
+                    chartContainer.style.display = 'block';
+                    const ctx = document.getElementById('pnlChart').getContext('2d');
+                    
+                    const labels = result.data.map(d => {
+                        const date = new Date(d.timestamp);
+                        return date.toLocaleTimeString();
+                    });
+                    const values = result.data.map(d => d.pnl);
+                    
+                    if (pnlChart) pnlChart.destroy();
+                    
+                    pnlChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'P&L',
+                                data: values,
+                                borderColor: values[values.length - 1] >= 0 ? '#00d26a' : '#ff4757',
+                                backgroundColor: 'rgba(0,0,0,0)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    grid: { color: '#2d3748' },
+                                    ticks: { color: '#718096' }
+                                },
+                                x: {
+                                    grid: { color: '#2d3748' },
+                                    ticks: { color: '#718096' }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                } else {
+                    chartContainer.style.display = 'none';
+                }
+            } catch (e) {
+                console.error('Error loading P&L chart:', e);
+                document.getElementById('pnlChartContainer').style.display = 'none';
+            }
+        }
+        
+        // Click outside modal to close
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                closePositionModal();
+            }
         }
         
         // Initialize
