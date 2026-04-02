@@ -41,7 +41,8 @@ from strategies.base import CompositeStrategy, TradingSignal
 from database import (
     init_database, save_signal, get_recent_signals,
     open_trade, close_trade, get_open_trades,
-    record_equity, TradeRecord, SignalRecord, save_decision
+    record_equity, TradeRecord, SignalRecord, save_decision,
+    save_position_snapshot
 )
 
 
@@ -234,23 +235,16 @@ class TradingSystem:
     
     def execute_trade(self, signal: TradingSignal):
         """Execute trade based on signal."""
-        
-        # Check current positions count - limit to max 3 positions
-        open_positions = get_open_trades()
-        
-        if open_positions and len(open_positions) >= 3:
-            logger.debug(f"Already have {len(open_positions)} positions, skipping")
-            return
-        
-        # Check confidence > 50%
-        if signal.confidence <= 0.5:
-            logger.info(f"Skipping order: confidence {signal.confidence:.0%} <= 50%")
+        print(f"execute_trade: {signal.signal_type.value.upper()} (conf {signal.confidence:.1%})")
+        # Check confidence > 45%
+        if signal.confidence <= 0.45:
+            logger.info(f"Skipping order: confidence {signal.confidence:.0%} <= 45%")
             # Save HOLD decision
             data = self.get_market_data()
             strategies_list = signal.metadata.get('signals', []) if signal.metadata else []
             save_decision(
                 action="HOLD",
-                reason=f"Confidence {signal.confidence:.0%} <= 50%, skipped",
+                reason=f"Confidence {signal.confidence:.0%} <= 45%, skipped",
                 price=data['price'],
                 volume=0,
                 profit=0,
@@ -422,10 +416,35 @@ class TradingSystem:
                 balance = acc['balance']
                 equity = acc['equity']
         
-        open_positions = get_open_trades()
-        if open_positions:
-            open_count = len(open_positions)
         
+            
+        # Save P&L snapshots for each open position
+        try:
+            import MetaTrader5 as mt5
+            mt5.initialize()
+            mt5_positions = mt5.positions_get()
+            mt5.shutdown()
+            if mt5_positions:
+                for pos in mt5_positions:
+                    try:
+                        save_position_snapshot(
+                            position_id=pos.ticket,
+                            price=pos.price_current,
+                            pnl=pos.profit,
+                            equity=equity,
+                            balance=balance,
+                            volume=pos.volume,
+                            direction='buy' if pos.type == 0 else 'sell'
+                        )
+
+                    except Exception as snap_err:
+                        logger.debug(f"Failed to save position snapshot: {snap_err}")
+
+                logger.info(f"save position snapshot")
+                
+        except Exception as e:
+            logger.debug(f"Failed to get MT5 positions for snapshot: {e}")
+    
         try:
             record_equity(balance, equity, open_count)
         except Exception as e:
@@ -537,6 +556,7 @@ class TradingSystem:
             return None
         
         # Step 4: Execute trade or save HOLD decision
+        print(f"final signal: {signal.signal_type.value}")
         if signal.signal_type.value != 'hold':
             logger.info(f"[{timestamp}] {signal}")
             try:
