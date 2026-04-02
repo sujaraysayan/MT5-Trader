@@ -42,7 +42,7 @@ from database import (
     init_database, save_signal, get_recent_signals,
     open_trade, close_trade, get_open_trades,
     record_equity, TradeRecord, SignalRecord, save_decision,
-    save_position_snapshot
+    save_position_snapshot, save_market_snapshot
 )
 
 
@@ -176,6 +176,7 @@ class TradingSystem:
                         'close': r[4],
                         'volume': r[5]
                     })
+            logger.info("######### Actual Market data retrieved #########")
             
             return {
                 'price': candle['close'] if candle else 0,
@@ -185,6 +186,8 @@ class TradingSystem:
             }
         else:
             # Simulation mode
+            logger.info("********* Simulation Market data retrieved *********")
+            
             return {
                 'price': 2650 + (datetime.now().minute % 100),
                 'indicators': {
@@ -539,6 +542,23 @@ class TradingSystem:
             import traceback
             logger.error(f"[{timestamp}] ERROR get_market_data: {e} | {traceback.format_exc()}")
             return None
+        
+        # Step 1b: Detect market type and save
+        try:
+            from market.detector import detect_market_type
+            market_result = detect_market_type()
+            if market_result and 'type' in market_result:
+                save_market_snapshot(
+                    market_type=market_result['type'],
+                    adx=market_result.get('adx'),
+                    atr_change=market_result.get('atr_change'),
+                    bb_width=market_result.get('bb_width'),
+                    ema_slope=market_result.get('ema_slope'),
+                    reason=market_result.get('reason')
+                )
+                logger.info(f"[{timestamp}] Market: {market_result['type']} ({market_result.get('reason', '')})")
+        except Exception as e:
+            logger.debug(f"[{timestamp}] Market detection error: {e}")
         
         # Step 2: Check and close profit
         try:
