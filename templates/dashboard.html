@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MT5 Gold Trader - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -13,7 +14,7 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Space Mono', monospace;
             background: #0a0e17;
             color: #e0e0e0;
             min-height: 100vh;
@@ -96,7 +97,7 @@
         /* Main Content */
         .main-content {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 60% 40%;
             gap: 20px;
             padding: 0 30px 30px;
         }
@@ -252,6 +253,79 @@
             font-size: 12px;
         }
         
+        /* Position Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        
+        .modal-content {
+            background-color: #1a1f2e;
+            margin: 5% auto;
+            padding: 25px;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #718096;
+            cursor: pointer;
+        }
+        
+        .modal-close:hover {
+            color: #fff;
+        }
+        
+        .modal h2 {
+            color: #f0b90b;
+            margin-bottom: 20px;
+        }
+        
+        .modal h3 {
+            color: #e0e0e0;
+            margin: 15px 0 10px;
+        }
+        
+        .modal-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .modal-detail-item {
+            background: #0d1117;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        
+        .modal-detail-item .label {
+            color: #718096;
+            font-size: 12px;
+        }
+        
+        .modal-detail-item .value {
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
         /* Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
@@ -377,49 +451,14 @@
             <div class="stat-value" id="totalPnL">$0.00</div>
             <div class="stat-change" id="pnLChange">--</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Open Positions</div>
-            <div class="stat-value" id="openPositions">0</div>
-            <div class="stat-change" id="positionsChange">--</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Signals Today</div>
-            <div class="stat-value" id="signalsToday">0</div>
-            <div class="stat-change" id="signalsChange">--</div>
-        </div>
     </div>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Left Column -->
         <div>
-            <!-- Signals Panel -->
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">📊 Recent Signals</span>
-                    <span class="refresh-indicator">Auto-refresh: 15s</span>
-                </div>
-                <div class="panel-body">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Strategy</th>
-                                <th>Signal</th>
-                                <th>Price</th>
-                                <th>Confidence</th>
-                                <th>SL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="signalsTable">
-                            <tr><td colspan="6" style="text-align:center;color:#718096">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
             <!-- Trade History Panel -->
-            <div class="panel" style="margin-top: 20px;">
+            <div class="panel">
                 <div class="panel-header">
                     <span class="panel-title">📜 Trade History</span>
                 </div>
@@ -440,6 +479,29 @@
                         </thead>
                         <tbody id="tradesTable">
                             <tr><td colspan="9" style="text-align:center;color:#718096">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Decision History Panel -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <span class="panel-title">🧠 Decision History</span>
+                </div>
+                <div class="panel-body" style="max-height: 300px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Action</th>
+                                <th>Reason</th>
+                                <th>Price</th>
+                                <th>Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="decisionsTable">
+                            <tr><td colspan="5" style="text-align:center;color:#718096">No decisions yet</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -511,28 +573,20 @@
                     <canvas id="equityChart"></canvas>
                 </div>
             </div>
-            
-            <!-- Decision History Panel -->
-            <div class="panel" style="margin-top: 20px;">
-                <div class="panel-header">
-                    <span class="panel-title">🧠 Decision History</span>
-                </div>
-                <div class="panel-body" style="max-height: 300px; overflow-y: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Action</th>
-                                <th>Reason</th>
-                                <th>Price</th>
-                                <th>Profit</th>
-                            </tr>
-                        </thead>
-                        <tbody id="decisionsTable">
-                            <tr><td colspan="5" style="text-align:center;color:#718096">No decisions yet</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        </div>
+    </div>
+    
+    <!-- Position Detail Modal -->
+    <div id="positionModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closePositionModal()">&times;</span>
+            <h2 id="modalTitle">Position Details</h2>
+            <div id="positionModalBody">
+                <!-- Details loaded here -->
+            </div>
+            <div id="pnlChartContainer">
+                <h3>P&L Curve</h3>
+                <canvas id="pnlChart"></canvas>
             </div>
         </div>
     </div>
@@ -626,15 +680,15 @@
                 pnlEl.className = 'stat-value ' + (pnlVal >= 0 ? 'positive' : 'negative');
                 
                 // Avg Win/Loss
-                document.getElementById('avgWin').textContent = '$' + formatNumber(data.avg_win);
-                document.getElementById('avgLoss').textContent = '$' + formatNumber(data.avg_loss);
+                const avgWinEl = document.getElementById('avgWin');
+                const avgLossEl = document.getElementById('avgLoss');
+                const winTradesEl = document.getElementById('winningTrades');
+                const loseTradesEl = document.getElementById('losingTrades');
                 
-                // Trade counts
-                document.getElementById('winningTrades').textContent = data.winning_trades;
-                document.getElementById('losingTrades').textContent = data.losing_trades;
-                
-                // Open positions
-                document.getElementById('openPositions').textContent = '0';
+                if (avgWinEl) avgWinEl.textContent = '$' + formatNumber(data.avg_win);
+                if (avgLossEl) avgLossEl.textContent = '$' + formatNumber(data.avg_loss);
+                if (winTradesEl) winTradesEl.textContent = data.winning_trades || 0;
+                if (loseTradesEl) loseTradesEl.textContent = data.losing_trades || 0;
                 
             } catch (e) {
                 console.error('Performance update error:', e);
@@ -675,7 +729,7 @@
         // Update trades
         async function updateTrades() {
             try {
-                const res = await fetch(API_BASE + '/api/trades?limit=10');
+                const res = await fetch(API_BASE + '/api/trades?limit=50');
                 const data = await res.json();
                 
                 const tbody = document.getElementById('tradesTable');
@@ -697,8 +751,9 @@
                         const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
                         holdingTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
                     }
+                    const posId = trade.position_id || trade.ticket;
                     return `
-                    <tr>
+                    <tr onclick="showPositionModal(${posId}, ${JSON.stringify(trade).replace(/"/g, '&quot;')})" style="cursor:pointer;">
                         <td>${formatDateTime(trade.timestamp)}</td>
                         <td>${trade.symbol}</td>
                         <td>${getSignalBadge(trade.direction)}</td>
@@ -847,10 +902,6 @@
                     priceEl.textContent = '$' + formatNumber(data.bid, 2);
                     changeEl.textContent = '';
                     changeEl.className = 'change';
-                    
-                    // Update equity display
-                    document.getElementById('equity').textContent = 
-                        formatNumber(data.equity);
                 }
             } catch (e) {
                 console.error('Price update error:', e);
@@ -861,11 +912,126 @@
         async function updateAll() {
             await updateStatus();
             await updatePerformance();
-            await updateSignals();
             await updateTrades();
             await updatePositions();
             await updateDecisions();
             updateCurrentPrice();
+        }
+        
+        // Position Modal Functions
+        let pnlChart = null;
+        
+        function showPositionModal(positionId, data) {
+            document.getElementById('modalTitle').textContent = 'Position #' + positionId;
+            
+            // Build details HTML
+            const details = `
+                <div class="modal-detail">
+                    <div class="modal-detail-item">
+                        <div class="label">Direction</div>
+                        <div class="value" style="color: ${data.direction === 'buy' ? '#00d26a' : '#ff4757'}">${(data.direction || '').toUpperCase()}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Volume</div>
+                        <div class="value">${data.volume || '--'}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Entry Price</div>
+                        <div class="value">$${formatNumber(data.entry_price, 2)}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Exit Price</div>
+                        <div class="value">${data.exit_price ? '$' + formatNumber(data.exit_price, 2) : '--'}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">P&L</div>
+                        <div class="value" style="color: ${(data.profit || 0) >= 0 ? '#00d26a' : '#ff4757'}">$${formatNumber(data.profit || 0, 2)}</div>
+                    </div>
+                    <div class="modal-detail-item">
+                        <div class="label">Status</div>
+                        <div class="value">${data.status || (data.exit_price ? 'CLOSED' : 'OPEN')}</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('positionModalBody').innerHTML = details;
+            
+            // Load P&L chart
+            loadPnLChart(positionId);
+            
+            // Show modal
+            document.getElementById('positionModal').style.display = 'block';
+        }
+        
+        function closePositionModal() {
+            document.getElementById('positionModal').style.display = 'none';
+            if (pnlChart) {
+                pnlChart.destroy();
+                pnlChart = null;
+            }
+        }
+        
+        async function loadPnLChart(positionId) {
+            try {
+                const res = await fetch(API_BASE + '/api/position-snapshots/' + positionId);
+                const result = await res.json();
+                
+                const chartContainer = document.getElementById('pnlChartContainer');
+                if (result.data && result.data.length > 0) {
+                    chartContainer.style.display = 'block';
+                    const ctx = document.getElementById('pnlChart').getContext('2d');
+                    
+                    const labels = result.data.map(d => {
+                        const date = new Date(d.timestamp);
+                        return date.toLocaleTimeString();
+                    });
+                    const values = result.data.map(d => d.pnl);
+                    
+                    if (pnlChart) pnlChart.destroy();
+                    
+                    pnlChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'P&L',
+                                data: values,
+                                borderColor: values[values.length - 1] >= 0 ? '#00d26a' : '#ff4757',
+                                backgroundColor: 'rgba(0,0,0,0)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    grid: { color: '#2d3748' },
+                                    ticks: { color: '#718096' }
+                                },
+                                x: {
+                                    grid: { color: '#2d3748' },
+                                    ticks: { color: '#718096' }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                } else {
+                    chartContainer.style.display = 'none';
+                }
+            } catch (e) {
+                console.error('Error loading P&L chart:', e);
+                document.getElementById('pnlChartContainer').style.display = 'none';
+            }
+        }
+        
+        // Click outside modal to close
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                closePositionModal();
+            }
         }
         
         // Initialize

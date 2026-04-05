@@ -130,6 +130,20 @@ def init_database():
         )
     """)
     
+    # Market detection snapshots table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS market_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            market_type TEXT NOT NULL,
+            adx REAL,
+            atr_change REAL,
+            bb_width REAL,
+            ema_slope REAL,
+            reason TEXT
+        )
+    """)
+    
     conn.commit()
     conn.close()
     print(f"Database initialized: {DATABASE_PATH}")
@@ -301,6 +315,33 @@ def get_position_snapshots(position_id: int) -> List[Dict]:
     conn.close()
     
     return [dict(row) for row in rows]
+
+
+def save_market_snapshot(market_type: str, adx: float = None, atr_change: float = None,
+                       bb_width: float = None, ema_slope: float = None, reason: str = None) -> int:
+    """Save a market type detection snapshot."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO market_snapshots 
+        (timestamp, market_type, adx, atr_change, bb_width, ema_slope, reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        datetime.now().isoformat(),
+        market_type,
+        adx,
+        atr_change,
+        bb_width,
+        ema_slope,
+        reason
+    ))
+    
+    snapshot_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return snapshot_id
 
 
 # =====================================================================

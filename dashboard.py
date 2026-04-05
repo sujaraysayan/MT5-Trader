@@ -347,6 +347,7 @@ def api_trades():
                     
                     result.append({
                         'ticket': entry_deal.ticket,
+                        'position_id': pos_id,
                         'symbol': 'GOLD',
                         'direction': direction,
                         'entry_price': entry_deal.price,
@@ -365,6 +366,7 @@ def api_trades():
                     direction = 'buy' if entry_deal.type == 0 else 'sell'
                     result.append({
                         'ticket': entry_deal.ticket,
+                        'position_id': pos_id,
                         'symbol': 'GOLD',
                         'direction': direction,
                         'entry_price': entry_deal.price,
